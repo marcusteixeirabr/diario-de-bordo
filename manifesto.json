@@ -28,6 +28,11 @@
           "titulo": "Tratamento de erros",
           "arquivo": "notas/go/tratamento-de-erros.md",
           "data": "2026-11-22"
+        },
+        {
+          "titulo": "Ponteiros",
+          "arquivo": "notas/go/ponteiros.md",
+          "data": "2026-11-22"
         }
       ]
     },
