@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diário de Bordo</title>
+  <meta name="description" content="Caderno de estudos do Marcus: anotações de programação organizadas por linguagem e framework.">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="lateral" id="lateral">
+      <a class="marca" href="#/">
+        <span class="marca-icone" aria-hidden="true">⚓</span>
+        <span>
+          <strong>Diário de Bordo</strong>
+          <small>caderno de estudos</small>
+        </span>
+      </a>
+
+      <label class="busca">
+        <span class="sr-only">Buscar notas por título</span>
+        <input id="busca" type="search" placeholder="Buscar por título…" autocomplete="off">
+      </label>
+
+      <nav id="stacks" class="stacks" aria-label="Assuntos"></nav>
+      <div id="resultados" class="resultados" hidden></div>
+    </aside>
+
+    <main class="principal">
+      <header class="cabecalho">
+        <h1 id="stack-titulo">Carregando…</h1>
+        <div id="abas" class="abas" role="tablist"></div>
+      </header>
+
+      <article id="nota" class="card nota">
+        <p class="vazio">Carregando o manifesto…</p>
+      </article>
+    </main>
+  </div>
+
+  <footer class="rodape">
+    <span>Diário de Bordo · anotações de um estudante de ADS na UNIVALI, escritas conforme aprendo.</span>
+    <span class="rodape-links">
+      <a href="https://marcusteixeirabr.github.io/resumos/">Resumos das disciplinas</a>
+      <a href="https://github.com/marcusteixeirabr/diario-de-bordo">GitHub</a>
+    </span>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
