@@ -148,9 +148,8 @@ a { color: var(--verde); }
 
 .abas {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 6px;
   margin-bottom: 16px;
 }
 .aba {
@@ -380,5 +379,6 @@ a { color: var(--verde); }
   .nota { padding: 20px 18px 26px; }
   .cabecalho h1 { font-size: 1.5rem; }
   .secao-nav { grid-template-columns: 1fr 1fr; }
+  .aba, .subaba { white-space: normal; max-width: 100%; }
   .secao-posicao { display: none; }
 }
