@@ -18,6 +18,16 @@
           "titulo": "Goroutines e concorrência",
           "arquivo": "notas/go/goroutines-e-concorrencia.md",
           "data": "2026-11-22"
+        },
+        {
+          "titulo": "Structs e métodos",
+          "arquivo": "notas/go/structs-e-metodos.md",
+          "data": "2026-11-22"
+        },
+        {
+          "titulo": "Tratamento de erros",
+          "arquivo": "notas/go/tratamento-de-erros.md",
+          "data": "2026-11-22"
         }
       ]
     },
