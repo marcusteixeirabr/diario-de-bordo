@@ -76,7 +76,7 @@ function montarLateral() {
 
 function rotear() {
   const { stacks } = estado.manifesto;
-  const [, idStack, idNota] = location.hash.replace(/^#/, "").split("/");
+  const [, idStack, idNota, idSecao] = location.hash.replace(/^#/, "").split("/");
 
   let stack = stacks.find((s) => s.id === idStack);
   if (!stack) stack = stacks.find((s) => s.notas.length) || stacks[0];
@@ -86,12 +86,13 @@ function rotear() {
   if (!nota) nota = stack.notas[0];
 
   // Normaliza a URL sem criar entrada extra no histórico
-  const esperado = nota ? `#/${stack.id}/${slugDaNota(nota)}` : `#/${stack.id}`;
+  let esperado = nota ? `#/${stack.id}/${slugDaNota(nota)}` : `#/${stack.id}`;
+  if (nota && idSecao) esperado += `/${idSecao}`;
   if (location.hash !== esperado) history.replaceState(null, "", esperado);
 
   marcarStackAtiva(stack);
   montarAbas(stack, nota);
-  if (nota) carregarNota(stack, nota);
+  if (nota) carregarNota(stack, nota, idSecao);
   else mostrarStackVazia(stack);
 }
 
@@ -118,27 +119,153 @@ function montarAbas(stack, notaAtual) {
 
 function mostrarStackVazia(stack) {
   document.title = `${stack.nome} · Diário de Bordo`;
+  delete $("nota").dataset.arquivo;
   $("nota").innerHTML = `
     <h2>Ainda sem notas de ${escapar(stack.nome)}</h2>
     <p class="vazio">A pasta já está pronta. Esta é uma das próximas paradas do diário.</p>`;
 }
 
-async function carregarNota(stack, nota) {
+// Guarda o Markdown já baixado para trocar de sub-aba sem buscar o arquivo de novo
+const cacheMarkdown = new Map();
+
+async function buscarMarkdown(arquivo) {
+  if (cacheMarkdown.has(arquivo)) return cacheMarkdown.get(arquivo);
+  const resposta = await fetch(arquivo, { cache: "no-cache" });
+  if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+  const texto = await resposta.text();
+  cacheMarkdown.set(arquivo, texto);
+  return texto;
+}
+
+function slugDoTitulo(texto) {
+  return normalizar(texto).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "secao";
+}
+
+// Caixas de destaque no padrão do GitHub: "> [!NOTE]", "> [!TIP]", "> [!IMPORTANT]", "> [!WARNING]", "> [!CAUTION]"
+const ROTULOS_DESTAQUE = {
+  NOTE: "Nota",
+  TIP: "Dica",
+  IMPORTANT: "Importante",
+  WARNING: "Atenção",
+  CAUTION: "Cuidado",
+};
+
+function aplicarDestaques(raiz) {
+  for (const citacao of raiz.querySelectorAll("blockquote")) {
+    const primeiro = citacao.querySelector("p");
+    if (!primeiro) continue;
+    const achado = primeiro.innerHTML.match(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(<br\s*\/?>)?\s*/i);
+    if (!achado) continue;
+    const tipo = achado[1].toUpperCase();
+    primeiro.innerHTML = primeiro.innerHTML.slice(achado[0].length);
+    if (!primeiro.innerHTML.trim()) primeiro.remove();
+    citacao.classList.add("destaque", `destaque-${tipo.toLowerCase()}`);
+    const rotulo = document.createElement("p");
+    rotulo.className = "destaque-rotulo";
+    rotulo.textContent = ROTULOS_DESTAQUE[tipo];
+    citacao.prepend(rotulo);
+  }
+}
+
+// Divide o HTML da nota pelos títulos "##": o que vem antes é a abertura (sempre visível),
+// e cada "##" vira uma sub-aba.
+function dividirEmSecoes(raiz) {
+  const abertura = [];
+  const secoes = [];
+  const usados = new Set();
+  let atual = null;
+
+  for (const no of [...raiz.childNodes]) {
+    if (no.nodeType === Node.ELEMENT_NODE && no.tagName === "H2") {
+      let slug = slugDoTitulo(no.textContent);
+      for (let n = 2; usados.has(slug); n++) slug = `${slugDoTitulo(no.textContent)}-${n}`;
+      usados.add(slug);
+      atual = { titulo: no.textContent, slug, nos: [no] };
+      secoes.push(atual);
+    } else if (atual) {
+      atual.nos.push(no);
+    } else {
+      abertura.push(no);
+    }
+  }
+  return { abertura, secoes };
+}
+
+function linkDaSecao(stack, nota, secao) {
+  return `#/${stack.id}/${slugDaNota(nota)}/${secao.slug}`;
+}
+
+async function carregarNota(stack, nota, idSecao) {
   const meuPedido = ++estado.pedido;
   const alvo = $("nota");
-  alvo.innerHTML = `<p class="vazio">Carregando…</p>`;
+  const mesmaNota = alvo.dataset.arquivo === nota.arquivo;
+  if (!mesmaNota) alvo.innerHTML = `<p class="vazio">Carregando…</p>`;
 
   try {
-    const resposta = await fetch(nota.arquivo, { cache: "no-cache" });
-    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
-    const markdown = await resposta.text();
+    const markdown = await buscarMarkdown(nota.arquivo);
     if (meuPedido !== estado.pedido) return;
 
-    const data = nota.data ? `<span class="data">Escrita em ${formatarData(nota.data)}</span>` : "";
-    alvo.innerHTML = data + marked.parse(markdown);
+    const rascunho = document.createElement("div");
+    rascunho.innerHTML = marked.parse(markdown);
+    aplicarDestaques(rascunho);
+    const { abertura, secoes } = dividirEmSecoes(rascunho);
+
+    alvo.innerHTML = "";
+    alvo.dataset.arquivo = nota.arquivo;
+    if (nota.data) {
+      const data = document.createElement("span");
+      data.className = "data";
+      data.textContent = `Escrita em ${formatarData(nota.data)}`;
+      alvo.appendChild(data);
+    }
+
+    if (secoes.length < 2) {
+      // Nota curta: mostra tudo de uma vez
+      alvo.append(...abertura, ...secoes.flatMap((s) => s.nos));
+    } else {
+      let indice = secoes.findIndex((s) => s.slug === idSecao);
+      if (indice < 0) indice = 0;
+      const secao = secoes[indice];
+
+      alvo.append(...abertura);
+
+      const subabas = document.createElement("nav");
+      subabas.className = "subabas";
+      subabas.setAttribute("aria-label", "Partes desta nota");
+      secoes.forEach((s, i) => {
+        const link = document.createElement("a");
+        link.className = "subaba" + (i === indice ? " ativa" : "");
+        link.href = linkDaSecao(stack, nota, s);
+        link.textContent = `${i + 1}. ${s.titulo}`;
+        if (i === indice) link.setAttribute("aria-current", "page");
+        subabas.appendChild(link);
+      });
+      alvo.appendChild(subabas);
+
+      const corpo = document.createElement("section");
+      corpo.className = "secao";
+      corpo.append(...secao.nos);
+      alvo.appendChild(corpo);
+
+      const navegacao = document.createElement("nav");
+      navegacao.className = "secao-nav";
+      const anterior = secoes[indice - 1];
+      const proxima = secoes[indice + 1];
+      navegacao.innerHTML = `
+        ${anterior ? `<a class="secao-anterior" href="${linkDaSecao(stack, nota, anterior)}">← ${escapar(anterior.titulo)}</a>` : "<span></span>"}
+        <span class="secao-posicao">${indice + 1} de ${secoes.length}</span>
+        ${proxima ? `<a class="secao-proxima" href="${linkDaSecao(stack, nota, proxima)}">${escapar(proxima.titulo)} →</a>` : "<span></span>"}`;
+      alvo.appendChild(navegacao);
+    }
+
     alvo.querySelectorAll("pre code").forEach((bloco) => hljs.highlightElement(bloco));
     document.title = `${nota.titulo} · ${stack.nome} · Diário de Bordo`;
-    window.scrollTo({ top: 0 });
+    if (mesmaNota) {
+      const topo = alvo.getBoundingClientRect().top + window.scrollY - 16;
+      if (window.scrollY > topo) window.scrollTo({ top: topo });
+    } else {
+      window.scrollTo({ top: 0 });
+    }
   } catch (erro) {
     if (meuPedido !== estado.pedido) return;
     alvo.innerHTML = `

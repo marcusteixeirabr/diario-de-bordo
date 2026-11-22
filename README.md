@@ -22,3 +22,10 @@ Abrir o `index.html` com dois cliques não funciona: o navegador bloqueia o `fet
 
 1. Criar `notas/<stack>/<assunto>.md`.
 2. Adicionar a entrada em `manifesto.json` (e a stack, se for nova).
+
+## Escrevendo uma nota
+
+- O que vem antes do primeiro `##` (o título `#` e a introdução) aparece sempre.
+- Cada `##` vira uma sub-aba, mostrada uma por vez e com link próprio (`#/go/nota/secao`). Títulos `##` curtos funcionam melhor. Uma nota com menos de dois `##` aparece inteira.
+- Caixas de destaque no padrão do GitHub: `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`.
+- Lista numerada (`1.`, `2.`...) aparece como passos com número em círculo.

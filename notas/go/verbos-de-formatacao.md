@@ -2,7 +2,7 @@
 
 As funções de formatação do pacote `fmt` recebem um texto modelo com "verbos", marcadores que começam com `%`, como `%v`, `%d` e `%s`. Cada verbo é trocado por um dos argumentos, na ordem. Um detalhe importante: **o compilador não confere se o verbo combina com o argumento**. O erro só aparece na execução (ou no `go vet`, que veremos no fim).
 
-## A família `%v`
+## Família %v
 
 Esses quatro são os que mais uso para inspecionar valores:
 
@@ -57,7 +57,17 @@ O `%q` é ótimo para log: deixa visível espaço sobrando, string vazia (`""`) 
 
 Lendo `%8.2f`: o `8` é a largura mínima do campo, o `.2` é a quantidade de casas decimais, e o `-` (em `%-5d`) alinha à esquerda.
 
-## Como um tipo controla o próprio `%v` e `%s`
+### Bônus: índice de argumento
+
+Para repetir o mesmo argumento sem passá-lo duas vezes:
+
+```go
+fmt.Printf("%[1]d em hexa é %[1]x\n", 255) // 255 em hexa é ff
+```
+
+## String()
+
+### Como um tipo controla o próprio `%v` e `%s`
 
 Se o tipo tem o método `String() string`, ele satisfaz a interface `fmt.Stringer`, e o `fmt` usa esse método no `%v` e no `%s`:
 
@@ -74,7 +84,8 @@ fmt.Printf("%#v\n", p) // main.Ponto{X:1, Y:2}  ← %#v ignora String()
 
 Para erros vale o mesmo com `Error() string`: o `%v` e o `%s` de um `error` chamam esse método.
 
-Uma armadilha clássica: dentro de `String()`, formatar o próprio valor com `%v` faz o `fmt` chamar `String()` de novo, e o programa entra em recursão infinita.
+> [!CAUTION]
+> Uma armadilha clássica: dentro de `String()`, formatar o próprio valor com `%v` faz o `fmt` chamar `String()` de novo, e o programa entra em recursão infinita.
 
 ```go
 func (p Ponto) String() string {
@@ -82,7 +93,7 @@ func (p Ponto) String() string {
 }
 ```
 
-## Quando o verbo está errado
+## Verbo errado
 
 Um verbo errado não derruba o programa. Ele vira uma marcação no próprio texto:
 
@@ -93,9 +104,12 @@ fmt.Printf("%d\n", 1, 2)  // 1
                           // %!(EXTRA int=2)
 ```
 
-Quem salva aqui é o `go vet`, que também roda automaticamente junto com o `go test`: ele avisa sobre `Printf` com verbo e argumento incompatíveis antes de você executar o programa.
+> [!TIP]
+> Quem salva aqui é o `go vet`, que também roda automaticamente junto com o `go test`: ele avisa sobre `Printf` com verbo e argumento incompatíveis antes de você executar o programa.
 
-## `Print`, `Printf`, `Sprintf`, `Errorf`...
+## Funções
+
+### `Print`, `Printf`, `Sprintf`, `Errorf`...
 
 O nome diz tudo: o **prefixo** é o destino, o **sufixo** é o estilo.
 
@@ -114,7 +128,9 @@ Detalhes que me pegaram:
 - `Printf` **não** põe `\n` sozinho.
 - O `log.Printf` usa os mesmos verbos, mas acrescenta data e hora.
 
-## `%w`: embrulhar erros com `fmt.Errorf`
+## Erros com %w
+
+### Embrulhar erros com `fmt.Errorf`
 
 O `%w` só tem sentido no `Errorf`. Ele formata o erro como `%v` faria **e** guarda o erro original dentro do novo, formando uma corrente:
 
@@ -147,15 +163,8 @@ Se eu tivesse usado `%v` no lugar de `%w`, a mensagem seria idêntica, mas o `er
 
 Na prática, cada `if err != nil` decide uma de três coisas: embrulhar com contexto (`%w`), só descrever (`%v`), ou devolver o erro como veio.
 
-Convenção: a mensagem acrescentada é curta, minúscula, e diz **o que estava sendo feito**, porque as camadas se empilham: `"carregar config: abrir arquivo: permission denied"`.
-
-## Bônus: índice de argumento
-
-Para repetir o mesmo argumento sem passá-lo duas vezes:
-
-```go
-fmt.Printf("%[1]d em hexa é %[1]x\n", 255) // 255 em hexa é ff
-```
+> [!NOTE]
+> Convenção: a mensagem acrescentada é curta, minúscula, e diz **o que estava sendo feito**, porque as camadas se empilham: `"carregar config: abrir arquivo: permission denied"`.
 
 ## Resumo
 
